@@ -72,8 +72,29 @@ double find_FVG(){
     return 0.0;
 }
 
+bool Is_BOS() {
+
+    RefreshRates();
+    double currentHigh = iHigh(Symbol(), 0, 1);
+    double currentLow = iLow(Symbol(), 0, 1);
+
+    if (buy_signal && currentHigh > swing_high) {
+        Print("Bullish BOS Detected");
+        return true;
+    }
+
+    if (sell_signal && currentLow < swing_low) {
+        Print("Bearish BOS Detected");
+        return true;
+    }
+
+    return false;
+}
+
+
 bool Is_mss() {
 
+    RefreshRates();
     double close_prev = iClose(Symbol(), 0, 1);
 
     if (swing_high <= 0 || swing_low <= 0) return false;
@@ -182,7 +203,8 @@ void OnTick()
         if(Is_sweep_liquidity(prev_price,prev_price2)){
             
             bool mss_confirmed = Is_mss();
-            if(buy_signal && mss_confirmed){
+            bool bos_confirmed = Is_BOS();
+            if(buy_signal && mss_confirmed && bos_confirmed){
                 // if buy and mss now find zone for trading
 
                 double zone_price = find_FVG();
@@ -193,12 +215,14 @@ void OnTick()
                     if (buyTicket < 0) {
                         Print("Buy Order failed. Error: ", GetLastError());
                     } else {
+                        buy_signal = false;
+                        sell_signal = false;
                         Print("Buy Order success. Ticket: ", buyTicket);
                     }
                 }
             }
 
-            else if(sell_signal && mss_confirmed){
+            else if(sell_signal && mss_confirmed && bos_confirmed){
                 // if sell and mss now find zone for trading
 
                 double zone_price = find_FVG();
@@ -209,6 +233,8 @@ void OnTick()
                     if (sellTicket < 0) {
                         Print("Sell Order failed. Error: ", GetLastError());
                     } else {
+                        buy_signal = false;
+                        sell_signal = false;
                         Print("Sell Order success. Ticket: ", sellTicket);
                     }
 
