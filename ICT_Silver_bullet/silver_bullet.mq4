@@ -76,6 +76,8 @@ bool Is_mss() {
 
     double close_prev = iClose(Symbol(), 0, 1);
 
+    if (swing_high <= 0 || swing_low <= 0) return false;
+
     if (buy_signal && close_prev > swing_high) {
         Print("Bullish MSS Confirmed");
         return true;
