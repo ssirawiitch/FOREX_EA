@@ -14,8 +14,8 @@
 //+------------------------------------------------------------------+
 
 // inputs
-input int    lookback   = 50;           // จำนวนแท่งที่ใช้คำนวณ
-input double entryZ     = 2.0;          // Z-score ที่ใช้เปิด order
+input int    lookback   = 100;          // จำนวนแท่งที่ใช้คำนวณ   (latest version is 50)
+input double entryZ     = 3.0;          // Z-score ที่ใช้เปิด order  (latest version is 2.0)
 input double exitZ      = 0.5;          // Z-score ที่ใช้ปิด order
 input double lotSize    = 0.01;         // ขนาดล็อต
 input double stopZ      = 3.5;          // Z-score ที่ใช้ปิด orderแบบ stop loss
@@ -48,17 +48,23 @@ double StdDev(double &arr[], int len) {
 void OnTick()
 {
     // calculate current price
-    double priceAUD = iClose("AUDUSD#", PERIOD_M15, 0);
-    double priceNZD = iClose("NZDUSD#", PERIOD_M15, 0);
+    double priceAUD = iClose("AUDUSD#", PERIOD_H1, 0);  // latest version is M15
+    double priceNZD = iClose("NZDUSD#", PERIOD_H1, 0);
     double spread   = priceAUD - priceNZD;
+    datetime last_bar_time = 0;
 
-    for (int i = 0; i < lookback; i++) {
-      spreadHistory[i] = iClose("AUDUSD#", PERIOD_M15, i) - iClose("NZDUSD#", PERIOD_M15, i);
+    // จะได้ไม่ต้องโหลดข้อมูลหลายๆรอบ ช้า
+    if (Time[0] != last_bar_time) { // Check for new bar
+        last_bar_time = Time[0];
+        for (int i = 0; i < lookback; i++) {
+            spreadHistory[i] = iClose("AUDUSD#", PERIOD_H1, i) - iClose("NZDUSD#", PERIOD_H1, i);
+        }
     }
 
     // calculate Z-score
     double mean = iMAOnArray(spreadHistory, 0, lookback, 0, MODE_SMA, 0);
     double stddev = StdDev(spreadHistory, lookback);
+    if (stddev == 0) return; // avoid division by zero
     double z = (spread - mean) / stddev;
     lastZ = z;
 
@@ -67,14 +73,14 @@ void OnTick()
     // order entry
     if (z >= entryZ && OrdersTotal() == 0) {
         // Short AUD, Long NZD
-        int ticket1 = OrderSend("AUDUSD#", OP_SELL, lotSize, Bid, 2, 0, 0, "Short AUD", 12345, 0, clrRed);
-        int ticket2 = OrderSend("NZDUSD#", OP_BUY, lotSize, Ask, 2, 0, 0, "Long NZD", 12346, 0, clrGreen);
+        int ticket1 = OrderSend("AUDUSD#", OP_SELL, lotSize, Bid, 4, 0, 0, "Short AUD", 12345, 0, clrRed);
+        int ticket2 = OrderSend("NZDUSD#", OP_BUY, lotSize, Ask, 4, 0, 0, "Long NZD", 12346, 0, clrGreen);
     }
 
     if (z <= -entryZ && OrdersTotal() == 0) {
         // Long AUD, Short NZD
-        int ticket3 = OrderSend("AUDUSD#", OP_BUY, lotSize, Ask, 2, 0, 0, "Long AUD", 12347, 0, clrBlue);
-        int ticket4 = OrderSend("NZDUSD#", OP_SELL, lotSize, Bid, 2, 0, 0, "Short NZD", 12348, 0, clrOrange);
+        int ticket3 = OrderSend("AUDUSD#", OP_BUY, lotSize, Ask, 4, 0, 0, "Long AUD", 12347, 0, clrBlue);
+        int ticket4 = OrderSend("NZDUSD#", OP_SELL, lotSize, Bid, 4, 0, 0, "Short NZD", 12348, 0, clrOrange);
     }
 
     // order exit
