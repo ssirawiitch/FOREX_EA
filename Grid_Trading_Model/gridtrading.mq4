@@ -2,6 +2,7 @@
 //|                                                 Grid_Trading.mq4 |
 //|                                  Copyright 2025, MetaQuotes Ltd. |
 //|                                             https://www.mql5.com |
+//|                                                 for trade EURUSD |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
@@ -47,6 +48,7 @@ double CalculateGridLevel(int index)
 }
 
 datetime prevBarTime = 0;
+datetime prevWeekTime = 0;
 
 // Function to check if a new bar has started
 bool IsNewBar()
@@ -58,6 +60,28 @@ bool IsNewBar()
     }
     return false;
 }
+
+// function to check if a new week has started
+bool IsNewWeek()
+{
+    datetime currentWeek = iTime(Symbol(), PERIOD_W1, 0);
+    if (currentWeek != prevWeekTime) {
+        prevWeekTime = currentWeek;
+        return true;
+    }
+    return false;
+}
+
+void RecalculateGridLevels()
+{
+    range = iHigh(Symbol(), PERIOD_W1, 1) - iLow(Symbol(), PERIOD_W1, 1);
+    gridSize = range / numGrid;
+    for (int i = 0; i <= numGrid; i++){
+        store_grid[i] = CalculateGridLevel(i);
+    }
+    ArraySort(store_grid, WHOLE_ARRAY, 0);
+}
+
 
 void DrawGridLine(double price, int index)
 {
@@ -83,6 +107,12 @@ void DrawGridLine(double price, int index)
 
 void OnTick()
 {
+    // if new week re calculate grid levels
+    if (IsNewWeek()) {
+        RecalculateGridLevels();
+        Print("New week detected. Grid levels recalculated.");
+    }
+
     // draw grid lines
     if (ShowGridLines && IsNewBar())
     {
@@ -118,34 +148,39 @@ void OnTick()
         }
     }
 
-    // ถ้าเปลี่ยนแท่ง 30 นาทีให้ reset buy and sell limit orders
-
-    // if new week re calculate grid levels
-
     // ถ้าถือข้ามวันและยังไม่ปิดทำกำไร ก็จะsl ยอมขาดทุนที่ราคาปิดของวัน
 
     // เข้าเทรดที่ 30 นาที
     double previousBar = iClose(Symbol(), PERIOD_M30, 1);
+    double previousLow = iLow(Symbol(), PERIOD_M30, 1);
 
+    bool buyPlaced = false;
     // วนลูปตั้ง buy limit ที่เส้นล่างเส้นเดียวใต้ราคานั้น
     for (int i = 0; i <= numGrid; i++){
         if(previousBar < store_grid[i]) {
             double buyLimitPrice = store_grid[i] - gridSize;
-            if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, 0, 0, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
+            double tpBuy  = buyLimitPrice + gridSize;
+            //double slBuy  = buyLimitPrice - gridSize * 2;
+            if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, 0, tpBuy, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
                 Print("Error opening buy limit order: ", GetLastError());
             }
-            break; // Exit loop after placing the first buy limit
+            buyPlaced = true;
+            break;
         }
     }
 
     // วนลูปตั้ง sell limit ที่เส้นล่างเส้นเดียวบนราคานั้น
-    for (int i = 0; i <= numGrid; i++){
-        if(previousBar > store_grid[i]) {
-            double buyLimitPrice = store_grid[i];
-            if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, 0, 0, "Grid Buy Limit", 12348, 0, clrGreen) < 0) {
-                Print("Error opening buy limit order: ", GetLastError());
+    if(!buyPlaced) {
+        for (int i = 0; i <= numGrid; i++){
+            if(previousBar > store_grid[i]) {
+                double sellLimitPrice = store_grid[i] + gridSize;
+                double tpSell = sellLimitPrice - gridSize;
+                //double slSell = sellLimitPrice + gridSize * 2;
+                if (OrderSend(Symbol(), OP_SELLLIMIT, lotSize, sellLimitPrice, Slippage, 0, tpSell, "Grid Sell Limit", 12348, 0, clrRed) < 0) {
+                    Print("Error opening sell limit order: ", GetLastError());
+                }
+                break;
             }
-            break; // Exit loop after placing the first buy limit
         }
     }
 }
