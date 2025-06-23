@@ -75,12 +75,17 @@ bool IsNewWeek()
 void RecalculateGridLevels()
 {
     range = iHigh(Symbol(), PERIOD_W1, 1) - iLow(Symbol(), PERIOD_W1, 1);
+    if (range <= 0.0) {
+        Print("Invalid range detected, skipping grid calculation");
+        return;
+    }
     gridSize = range / numGrid;
     for (int i = 0; i <= numGrid; i++){
         store_grid[i] = CalculateGridLevel(i);
     }
     ArraySort(store_grid, WHOLE_ARRAY, 0);
 }
+
 
 
 void DrawGridLine(double price, int index)
@@ -148,39 +153,40 @@ void OnTick()
         }
     }
 
-    // ถ้าถือข้ามวันและยังไม่ปิดทำกำไร ก็จะsl ยอมขาดทุนที่ราคาปิดของวัน
-
     // เข้าเทรดที่ 30 นาที
     double previousBar = iClose(Symbol(), PERIOD_M30, 1);
     double previousLow = iLow(Symbol(), PERIOD_M30, 1);
 
-    bool buyPlaced = false;
-    // วนลูปตั้ง buy limit ที่เส้นล่างเส้นเดียวใต้ราคานั้น
     for (int i = 0; i <= numGrid; i++){
+        // วนลูปตั้ง buy limit ที่เส้นล่างเส้นเดียวใต้ราคานั้น
+        // sl ที่เส้นล่างสุดหรือบนสุด +- (gridSize * 2)
         if(previousBar < store_grid[i]) {
-            double buyLimitPrice = store_grid[i] - gridSize;
-            double tpBuy  = buyLimitPrice + gridSize;
-            //double slBuy  = buyLimitPrice - gridSize * 2;
-            if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, 0, tpBuy, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
-                Print("Error opening buy limit order: ", GetLastError());
+            double buyLimitPrice = NormalizeDouble(store_grid[i] - gridSize, Digits);
+            double tpBuy  = NormalizeDouble(buyLimitPrice + gridSize, Digits);   
+            double slBuy = NormalizeDouble(store_grid[0] - (gridSize * 2), Digits); // SL for buy limit             
+            double bid = MarketInfo(Symbol(), MODE_BID);
+            if (buyLimitPrice < bid) {
+                if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, slBuy, tpBuy, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
+                    Print("Error opening buy limit order: ", GetLastError(), ", price: ", buyLimitPrice);                    
+                }
+            } else {
+                Print("Skipped BuyLimit: price above Bid");
             }
-            buyPlaced = true;
             break;
         }
-    }
-
-    // วนลูปตั้ง sell limit ที่เส้นล่างเส้นเดียวบนราคานั้น
-    if(!buyPlaced) {
-        for (int i = 0; i <= numGrid; i++){
-            if(previousBar > store_grid[i]) {
-                double sellLimitPrice = store_grid[i] + gridSize;
-                double tpSell = sellLimitPrice - gridSize;
-                //double slSell = sellLimitPrice + gridSize * 2;
-                if (OrderSend(Symbol(), OP_SELLLIMIT, lotSize, sellLimitPrice, Slippage, 0, tpSell, "Grid Sell Limit", 12348, 0, clrRed) < 0) {
-                    Print("Error opening sell limit order: ", GetLastError());
+        else if(previousBar < store_grid[i]){ // วนลูปตั้ง sell limit ที่เส้นล่างเส้นเดียวบนราคานั้น
+            double sellLimitPrice = NormalizeDouble(store_grid[i], Digits);
+            double tpSell = NormalizeDouble(sellLimitPrice - gridSize, Digits);
+            double slSell = NormalizeDouble(store_grid[numGrid] + (gridSize * 2), Digits); // SL for sell limit 
+            double ask = MarketInfo(Symbol(), MODE_ASK);
+            if (sellLimitPrice > ask) {
+                if (OrderSend(Symbol(), OP_SELLLIMIT, lotSize, sellLimitPrice, Slippage, slSell, tpSell, "Grid Sell Limit", 12348, 0, clrRed) < 0) {
+                    Print("Error opening sell limit order: ", GetLastError(), ", price: ", sellLimitPrice);
                 }
-                break;
+            } else {
+                Print("Skipped SellLimit: price below Ask");
             }
+            break;
         }
     }
 }
