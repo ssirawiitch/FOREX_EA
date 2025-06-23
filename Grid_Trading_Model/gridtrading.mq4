@@ -156,15 +156,23 @@ void OnTick()
     // เข้าเทรดที่ 30 นาที
     double previousBar = iClose(Symbol(), PERIOD_M30, 1);
     double previousLow = iLow(Symbol(), PERIOD_M30, 1);
+    double previousHigh = iHigh(Symbol(), PERIOD_M30, 1);
 
     for (int i = 0; i <= numGrid; i++){
         // วนลูปตั้ง buy limit ที่เส้นล่างเส้นเดียวใต้ราคานั้น
         // sl ที่เส้นล่างสุดหรือบนสุด +- (gridSize * 2)
-        if(previousBar < store_grid[i]) {
-            double buyLimitPrice = NormalizeDouble(store_grid[i] - gridSize, Digits);
-            double tpBuy  = NormalizeDouble(buyLimitPrice + gridSize, Digits);   
-            double slBuy = NormalizeDouble(store_grid[0] - (gridSize * 2), Digits); // SL for buy limit             
-            double bid = MarketInfo(Symbol(), MODE_BID);
+
+        double level = NormalizeDouble(store_grid[i],Digits);
+        double buyLimitPrice = NormalizeDouble(store_grid[i] - gridSize, Digits);
+        double tpBuy  = NormalizeDouble(buyLimitPrice + gridSize, Digits);   
+        double slBuy = NormalizeDouble(store_grid[0] - (gridSize * 2), Digits); // SL for buy limit             
+        double bid = MarketInfo(Symbol(), MODE_BID);
+        double sellLimitPrice = NormalizeDouble(store_grid[i], Digits);
+        double tpSell = NormalizeDouble(sellLimitPrice - gridSize, Digits);
+        double slSell = NormalizeDouble(store_grid[numGrid] + (gridSize * 2), Digits); // SL for sell limit 
+        double ask = MarketInfo(Symbol(), MODE_ASK);
+
+        if((level < previousBar) && (previousLow > level)) {
             if (buyLimitPrice < bid) {
                 if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, slBuy, tpBuy, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
                     Print("Error opening buy limit order: ", GetLastError(), ", price: ", buyLimitPrice);                    
@@ -173,12 +181,8 @@ void OnTick()
                 Print("Skipped BuyLimit: price above Bid");
             }
             break;
-        }
-        else if(previousBar < store_grid[i]){ // วนลูปตั้ง sell limit ที่เส้นล่างเส้นเดียวบนราคานั้น
-            double sellLimitPrice = NormalizeDouble(store_grid[i], Digits);
-            double tpSell = NormalizeDouble(sellLimitPrice - gridSize, Digits);
-            double slSell = NormalizeDouble(store_grid[numGrid] + (gridSize * 2), Digits); // SL for sell limit 
-            double ask = MarketInfo(Symbol(), MODE_ASK);
+        } 
+        else if((level > previousBar) && (previousHigh < level) ) {
             if (sellLimitPrice > ask) {
                 if (OrderSend(Symbol(), OP_SELLLIMIT, lotSize, sellLimitPrice, Slippage, slSell, tpSell, "Grid Sell Limit", 12348, 0, clrRed) < 0) {
                     Print("Error opening sell limit order: ", GetLastError(), ", price: ", sellLimitPrice);
@@ -188,6 +192,35 @@ void OnTick()
             }
             break;
         }
+
+        // if(previousBar < store_grid[i]) {
+        //     double buyLimitPrice = NormalizeDouble(store_grid[i] - gridSize, Digits);
+        //     double tpBuy  = NormalizeDouble(buyLimitPrice + gridSize, Digits);   
+        //     double slBuy = NormalizeDouble(store_grid[0] - (gridSize * 2), Digits); // SL for buy limit             
+        //     double bid = MarketInfo(Symbol(), MODE_BID);
+            // if (buyLimitPrice < bid) {
+            //     if (OrderSend(Symbol(), OP_BUYLIMIT, lotSize, buyLimitPrice, Slippage, slBuy, tpBuy, "Grid Buy Limit", 12347, 0, clrGreen) < 0) {
+            //         Print("Error opening buy limit order: ", GetLastError(), ", price: ", buyLimitPrice);                    
+            //     }
+            // } else {
+            //     Print("Skipped BuyLimit: price above Bid");
+            // }
+            // break;
+        // }
+        // else if(previousBar < store_grid[i]){ // วนลูปตั้ง sell limit ที่เส้นล่างเส้นเดียวบนราคานั้น
+        //     double sellLimitPrice = NormalizeDouble(store_grid[i], Digits);
+        //     double tpSell = NormalizeDouble(sellLimitPrice - gridSize, Digits);
+        //     double slSell = NormalizeDouble(store_grid[numGrid] + (gridSize * 2), Digits); // SL for sell limit 
+        //     double ask = MarketInfo(Symbol(), MODE_ASK);
+            // if (sellLimitPrice > ask) {
+            //     if (OrderSend(Symbol(), OP_SELLLIMIT, lotSize, sellLimitPrice, Slippage, slSell, tpSell, "Grid Sell Limit", 12348, 0, clrRed) < 0) {
+            //         Print("Error opening sell limit order: ", GetLastError(), ", price: ", sellLimitPrice);
+            //     }
+            // } else {
+            //     Print("Skipped SellLimit: price below Ask");
+            // }
+            // break;
+        // }
     }
 }
 
