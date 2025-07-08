@@ -1,12 +1,13 @@
 // in this version we use oi (strike price) to be lines (0.005,0.0025)
 //+------------------------------------------------------------------+
 //|                                                   GridTrader.mq4 |
-//|                         Custom Grid Trading EA for EURUSD       |
+//|                                Custom Grid Trading EA for EURUSD |
+//|                                                          by Will |
 //+------------------------------------------------------------------+
 #property strict
 
 extern double GridStep = 0.0025;    // ระยะห่างระหว่างเส้น
-extern double LotSize = 0.02;        // Lot Size
+extern double LotSize = 0.01;        // Lot Size
 extern int Slippage = 10;            // Slippage protect error 138
 extern int MagicNumber = 12345;     // Magic Number
 extern double TP_Pips = 0.0025;     // TP เท่ากับระยะห่าง 1 เส้น
@@ -54,15 +55,19 @@ void DrawGridLines() {
 // ฟังก์ชันเปิด Order
 void OpenOrder(int type, double price) {
     double tp = (type == OP_BUY) ? price + TP_Pips : price - TP_Pips;
+    double sl = (type == OP_BUY) ? price - GridStep * 5 : price + GridStep * 5;
+
     tp = NormalizeDouble(tp, Digits);
+    sl = NormalizeDouble(sl, Digits);
     price = NormalizeDouble(price, Digits);
 
     if (type == OP_BUY) {
-        OrderSend(Symbol(), OP_BUY, LotSize, price, Slippage, 0, tp, "Grid Buy", MagicNumber, 0, clrGreen);
+        int ticket1 = OrderSend(Symbol(), OP_BUY, LotSize, price, Slippage, sl, tp, "Grid Buy", MagicNumber, 0, clrGreen);
     } else if (type == OP_SELL) {
-        OrderSend(Symbol(), OP_SELL, LotSize, price, Slippage, 0, tp, "Grid Sell", MagicNumber, 0, clrRed);
+        int ticket2 = OrderSend(Symbol(), OP_SELL, LotSize, price, Slippage, sl, tp, "Grid Sell", MagicNumber, 0, clrRed);
     }
 }
+
 
 int OnInit() {
     return INIT_SUCCEEDED;
