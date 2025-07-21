@@ -6,8 +6,10 @@
 //+------------------------------------------------------------------+
 #property strict
 
+//  manage risk by headging adn use cents port (enter position = 0.1 lots then hedge with 0.11 lots)
+
 extern double GridStep = 0.0025;    // ระยะห่างระหว่างเส้น
-extern double LotSize = 0.01;        // Lot Size
+extern double LotSize = 0.1;        // Lot Size
 extern int Slippage = 10;            // Slippage protect error 138
 extern int MagicNumber = 12345;     // Magic Number
 extern double TP_Pips = 0.0025;     // TP เท่ากับระยะห่าง 1 เส้น
