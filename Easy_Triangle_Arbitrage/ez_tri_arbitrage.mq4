@@ -44,13 +44,13 @@ void OnTick()
    if (eurusd_ask == 0 || usdjpy_ask == 0 || eurjpy_bid == 0)
       return;
 
-   // Step 1: เริ่มจาก 1 EUR → แปลงเป็น USD
+   // Step 1: convert 1 EUR → to USD
    double usd = 1 * eurusd_ask;
 
-   // Step 2: แปลง USD เป็น JPY
+   // Step 2: convert USD to JPY
    double jpy = usd * usdjpy_ask;
 
-   // Step 3: แปลง JPY กลับเป็น EUR
+   // Step 3: convert JPY back to EUR
    double eur_back = jpy / eurjpy_ask;
 
    double profit = eur_back - 1;
