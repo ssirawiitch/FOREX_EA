@@ -23,6 +23,7 @@ input double stopZ      = 3.5;          // Z-score ที่ใช้ปิด o
 // variables
 double spreadHistory[1000];
 double lastZ = 0;
+static datetime last_bar_time = 0;
 
 int OnInit()
 {
@@ -51,7 +52,6 @@ void OnTick()
     double priceAUD = iClose("AUDUSD#", PERIOD_H1, 0);  // latest version is M15
     double priceNZD = iClose("NZDUSD#", PERIOD_H1, 0);
     double spread   = priceAUD - priceNZD;
-    datetime last_bar_time = 0;
 
     // จะได้ไม่ต้องโหลดข้อมูลหลายๆรอบ ช้า
     if (Time[0] != last_bar_time) { // Check for new bar

@@ -1,6 +1,9 @@
 // GridTrader with Trend Filter (EMA 10/50/200 on D1)
 #property strict
 
+// ใช้ ema 3 เส้นในการดูเทรนด์ ถ้าเป็นขาขึ้น buy อย่างเดียว และถ้าเป็นขาลง sell อย่างเดียว
+// ถ้าเป็น sideway จะเปิดทั้ง buy และ sell
+
 extern double GridStep = 0.0025;
 extern double LotSize = 0.1;
 extern int Slippage = 10;
